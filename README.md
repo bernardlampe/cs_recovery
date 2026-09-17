@@ -2,18 +2,13 @@
 
 Every sample is a standalone NumPy script. A sparse signal generated in the
 DCT domain runs through the whole course by default, so each technique can be
-compared against the previous ones. One shared driver, `run_all.py`, collects
-per-iteration residual curves and final errors from every algorithm and writes
-the two summary charts.
+compared against the previous ones. One shared driver, `convergence_test.py`, collects
+per-iteration residual curves and final errors from every algorithm under two
+measurement cases (noiseless, and noise at SNR = 20 dB), then writes the two
+summary charts. Chart statistics (ranking, console table, best-algorithm
+verdict) are taken from the noiseless case only.
 
-Example:
-```bash
-python 03_omp.py                   # run OMP on the standard test signal
-./../.venv/Scripts/python run_all.py   # or: run everything, make both charts
-```
-
-The numerical toolbox every algorithm leans on lives in `opt/` and is
-hand-written too:
+The numerical toolbox every algorithm leans on lives in `opt/`:
 
   * `opt/prox.py`      - soft/hard thresholding, l2-ball projection (proximal operators)
   * `opt/gradient.py`  - Armijo line search, plain and accelerated (FISTA) proximal gradient
@@ -21,12 +16,11 @@ hand-written too:
   * `opt/admm.py`      - two-block ADMM with closed-form z-update
   * `opt/dantzig.py`   - two-phase primal simplex for basis pursuit LPs
 
-Requirements: Python 3, NumPy. Everything else (including plotting and the
-DCT transform in `common/common.py`) is hand-rolled in this folder.
+Requirements: Python 3, NumPy.
 
 ---
 
-## Part I - Greedy pursuit (sessions 1–8)
+## Part I - Greedy pursuit
 
 ### 1. `01_mp.py` - Matching Pursuit
 - **Concepts**: correlation scan, one-atom coefficient update, no backfitting.
@@ -41,11 +35,11 @@ DCT transform in `common/common.py`) is hand-rolled in this folder.
 ### 2. `02_weak_mp.py` - Weak Matching Pursuit
 - **Concepts**: weak acceptance threshold (0 < mu < 1), gain action.
 - **Update**: accept ANY atom whose correlation exceeds mu times the peak
-  correlation rather than the argmax; convergence is guaranteed for the
-  family when mu > 0.5.
+  correlation rather than the argmax.
 - **Key insight**: relaxing argmax to threshold is a cheap-first compromise
-  that streaming implementations can use; with mu = 0.9 recovery
-  is unchanged on the standard problem.
+  that streaming implementations can use; the convergence framework holds for
+  any mu < 1 (Blumensath-Davies' weak-selection analysis), and with
+  mu = 0.9 recovery is unchanged on the standard problem.
 
 ### 3. `03_omp.py` - Orthogonal Matching Pursuit
 - **Concepts**: support set, backfitting least squares on support,
@@ -59,10 +53,14 @@ DCT transform in `common/common.py`) is hand-rolled in this folder.
 
 ### 4. `04_omp_rls.py` — OMP with Recursive Least Squares updates
 - **Concepts**: online inverse-correlation maintenance (P matrix), gain vectors.
-- **Update**: instead of recomputing least squares each pass, keeps the inverse
-  correlation matrix and applies rank-1 downdates.
-- **Key insight**: same support selection as OMP, but the LS solve is amortized
-  when atoms stream in one at a time.
+- **Update**: same support selection as OMP; each accepted atom extends the
+  RLS gain computation and rank-1 inverse-correlation update, but the
+  coefficient refresh in this reference implementation is still a plain
+  pinv least-squares on the active submatrix (full coefficient streaming
+  is left as an exercise).
+- **Key insight**: the RLS machinery is set up so coefficients can be
+  amortized as atoms stream in one at a time rather than re-solved
+  globally.
 
 ### 5. `05_stomp.py` - Stagewise Orthogonal Matching Pursuit
 - **Concepts**: threshold selection in batches, sigma-based cutoffs.
@@ -95,7 +93,7 @@ DCT transform in `common/common.py`) is hand-rolled in this folder.
 
 ---
 
-## Part II — Iterative thresholding & reweighted schemes (sessions 9–11)
+## Part II — Iterative thresholding & reweighted schemes
 
 ### 9. `09_iht.py` - Iterative Hard Thresholding
 - **Concepts**: hard-thresholding operator H_k, normalized step size, NP-hard
@@ -108,29 +106,31 @@ DCT transform in `common/common.py`) is hand-rolled in this folder.
 ### 10. `10_irls.py` - Iteratively Reweighted Least Squares
 - **Concepts**: surrogate log-sum penalties, weight update W = diag(2/(|x|+d)).
 - **Update**: minimize a weighted-ridge LS per iteration where the weights
-  amplify small coefficients (d delta-e.g. 1e-4 keeps the system invertible).
-- **Key insight**: reweighting approximates l0 from above; with delta → 0 the
-  fixed point enters the true sparse arsenal, sensitive to noise amplitude.
+  amplify small coefficients (delta e.g. 1e-4 keeps the system invertible).
+- **Key insight**: reweighting approximates l0 from above; as delta → 0 the
+  fixed point approaches the true sparse solution, at the price of noise
+  sensitivity.
 
 ### 11. `11_focuss.py` - FOCal Underdetermined System Solver
 - **Concepts**: multiplicative weight updates (W = diag(x_k)), minimum-norm
-  reweighting by pseuodoinverse.
+  reweighting by pseudoinverse.
 - **Update**: x ← Wₚ(AWₚ)⁺y each iteration — the pseudo-inverse restriction
-  sharpens the previous estimate.
+  sharpens the previous estimate (Tikhonov-regularized pinv for noisy data).
 - **Key insight**: FOCUSS is IRLS's ancestor: same idea of sharpening the
   minimum-norm solution, but multiplicative; converges in very few iterations
   under exact measurements and a good initial guess.
 
 ---
 
-## Part III - Convex l1 solvers (sessions 12–14)
+## Part III - Convex l1 solvers
 
 ### 12. `12_lars.py` - Least Angle Regression
-- **Concepts**: equiangular direction, correlated knots, step sizes gamma per section.
+- **Concepts**: equiangular direction, correlation knots, step sizes gamma.
 - **Update**: grow support by atoms whose correlations tie the active
   correlation, then walk the joint equiangular direction.
-- **Key insight**: the whole LASSO path traced in pivots; each step grows
-  support by exactly one atom (vs OMP taking one atom per LS).
+- **Key insight**: the whole LASSO path traced in pivots; each pivot adds
+  exactly one atom to the support (like OMP), but the step along the
+  equiangular direction is chosen so all active correlations stay tied.
 
 ### 13. `13_bp.py` - Basis Pursuit via linear programming
 - **Concepts**: standard-form LP, x = u − v splitting, two-phase primal simplex,
@@ -154,7 +154,7 @@ DCT transform in `common/common.py`) is hand-rolled in this folder.
 
 ---
 
-## Part IV — Operator-splitting and message passing (sessions 15–18)
+## Part IV — Operator-splitting and message passing
 
 ### 15. `15_aadm.py` - Adaptive ADMM
 - **Concepts**: primal/dual residual balancing, adaptive penalty (Boyd 3.4.1).
@@ -181,9 +181,9 @@ DCT transform in `common/common.py`) is hand-rolled in this folder.
   rounds with max, promote the heaviest pace atoms per round, exact LS on
   support each time.
 - **Key insight**: importing the streaming-algorithm toolkit: detection via
-  randomized sketching with O(pace·n) work per iteration instead of a full
-  correlation scan; an exact single-atom-scan would be O(n) anyway here, but
-  the trick pays off when the correlation itself must be maintained streaming.
+  randomized sketching costs O(repeats·n) per iteration plus the exact LS
+  on the small promoted support; the trick pays off when the correlation
+  itself must be maintained in a streaming setting.
 
 ### 18. `18_amp.py` - Approximate Message Passing
 - **Concepts**: Onsager reaction term, denoiser sensitivity, state evolution.
@@ -202,8 +202,8 @@ DCT transform in `common/common.py`) is hand-rolled in this folder.
 
   * a noiseless (or SNR = 20 dB) sparse DCT signal with |Support| = 10 random
     integer amplitudes,
-  * a random Gaussian measurement matrix A normalized to σᵢ·m⁻¹ᐟ² with
-    m = 2·k·log(n/k) ≈ 60 rows (well above the k·log(n/k) exact-recovery
+  * a random Gaussian measurement matrix A with entries scaled by m^{-1/2},
+    m = ceil(2·k·log(n/k)) ≈ 60 rows (well above the k·log(n/k) exact-recovery
     boundary),
   * y = A·x_t.
 
@@ -215,11 +215,16 @@ signal `run_all.py` hands to all 18 solvers.
 `run_all.py` writes two PNGs into `out/`:
 
   * `out/convergence.png` — per-iteration residual norm ||y − Ax||₂ on log
-    axes; a left panel with the full horizon and a right panel zoomed on the
-    first 30 iterations (where the greedy family collapses), so both fast
-    and slow solvers are readable.
-  * `out/error_chart.png` — final relative l2 error per algorithm, sorted
-    best first, log scale.
+    axes, as a 2×2 grid: top row the noiseless case, bottom row the noisy
+    (SNR = 20 dB) case; each row has a full-horizon panel (left) and a zoom
+    of the first 30 iterations (right), where the greedy family collapses.
+  * `out/error_chart.png` — grouped horizontal bars of the final relative
+    l2 error per algorithm (one clean bar, one noisy bar each), ranked by
+    the clean error, log scale.
+
+Demo PNGs written by the individual scripts additionally carry the
+generating algorithm name and a timestamp in their filename, so repeated
+runs do not clobber earlier results.
 
 ## Summary lessons
 
@@ -232,3 +237,156 @@ signal `run_all.py` hands to all 18 solvers.
     cost is iterations/machine time rather than implementation complexity.
   * Sketched/message-passing (HHS/AMP): the modern scaling story; O(n) per
     iteration with statistical rather than exact guarantees.
+
+---
+
+## References
+
+Per-algorithm citations, as cited in each algorithm's script:
+
+**`01_mp.py`**
+- M. A. Hammeed, "Comparative Analysis of Orthogonal Matching Pursuit and
+  Least Angle Regression," M.S. thesis, Michigan State University, 2012.
+
+**`02_weak_mp.py`**
+- T. Blumensath and M. E. Davies, "Gradient Pursuits," IEEE Transactions on
+  Signal Processing, vol. 56, no. 6, pp. 2370-2382, June 2008. (defines the
+  weak/gain selection framework)
+- R. Gribonval and P. Vandergheynst, "On the convergence of matching
+  pursuit," IEEE Transactions on Information Theory, vol. 52, no. 1,
+  pp. 172-180, Jan. 2006.
+
+**`03_omp.py`**
+- J. A. Tropp and A. C. Gilbert, "Signal Recovery From Random Measurements
+  Via Orthogonal Matching Pursuit," IEEE Transactions on Information Theory,
+  vol. 53, no. 12, pp. 4655-4666, Dec. 2007.
+- M. A. Hammeed, "Comparative Analysis of Orthogonal Matching Pursuit and
+  Least Angle Regression," M.S. thesis, Michigan State University, 2012.
+
+**`04_omp_rls.py`**
+- D. Zachariah, S. Chatterjee and M. Jansson, "Online Network Response
+  Identification with Recursive Least Squares," Signal Processing,
+  vol. 103, pp. 237-246, 2014. (RLS support-extension viewpoint)
+- M. A. Hammeed, "Comparative Analysis of Orthogonal Matching Pursuit and
+  Least Angle Regression," M.S. thesis, Michigan State University, 2012.
+  (OMP termination conventions)
+
+**`05_stomp.py`**
+- D. L. Donoho, Y. Tsaig, I. Drori and J.-L. Starck, "Sparse Solution of
+  Underdetermined Linear Equations by Stagewise Orthogonal Matching
+  Pursuit," IEEE Transactions on Information Theory, vol. 58, no. 2,
+  pp. 1094-1121, Feb. 2012.
+- A. Majumdar, "Compressed Sensing for Engineers," CRC Press, 2018.
+
+**`06_gradient_pursuit.py`**
+- T. Blumensath and M. E. Davies, "Gradient Pursuits," IEEE Transactions on
+  Signal Processing, vol. 56, no. 6, pp. 2370-2382, June 2008.
+
+**`07_cosamp.py`**
+- D. Needell and J. A. Tropp, "CoSaMP: Iterative signal recovery from
+  incomplete and inaccurate samples," Applied and Computational Harmonic
+  Analysis, vol. 26, no. 3, pp. 301-321, 2009.
+
+**`08_sp.py`**
+- W. Dai and O. Milenkovic, "Subspace Pursuit for Compressive Sensing
+  Signal Reconstruction," IEEE Transactions on Information Theory,
+  vol. 55, no. 5, pp. 2230-2249, May 2009.
+
+**`09_iht.py`**
+- T. Blumensath and M. E. Davies, "Iterative Hard Thresholding for
+  Compressed Sensing," Applied and Computational Harmonic Analysis,
+  vol. 27, no. 3, pp. 265-274, 2009.
+- T. Blumensath and M. E. Davies, "Normalized Iterative Hard Thresholding:
+  Guaranteed Stability and Performance," IEEE Journal of Selected Topics in
+  Signal Processing, vol. 4, no. 2, pp. 298-310, 2010.
+
+**`10_irls.py`**
+- R. Chartrand and W. Yin, "Iteratively reweighted algorithms for
+  compressive sensing," IEEE ICASSP 2008, pp. 3869-3872,
+  doi: 10.1109/ICASSP.2008.4518498.
+
+**`11_focuss.py`**
+- I. F. Gorodnitsky and B. D. Rao, "Sparse signal reconstruction from
+  limited data using FOCUSS: a re-weighted minimum norm algorithm," IEEE
+  Transactions on Signal Processing, vol. 45, no. 3, pp. 600-616, March
+  1997, doi: 10.1109/78.558475.
+
+**`12_lars.py`**
+- B. Efron, T. Hastie, I. Johnstone and R. Tibshirani, "Least Angle
+  Regression," The Annals of Statistics, vol. 32, no. 2, pp. 407-499, 2004.
+- M. A. Hammeed, "Comparative Analysis of Orthogonal Matching Pursuit and
+  Least Angle Regression," M.S. thesis, Michigan State University, 2012.
+
+**`13_bp.py`**
+- S. S. Chen, D. L. Donoho and M. A. Saunders, "Atomic Decomposition by
+  Basis Pursuit," SIAM Review, vol. 43, no. 1, pp. 129-159, 2001.
+- E. Candès and J. Romberg, "l1-magic: Recovery of Sparse Signals," Caltech
+  Technical Report, 2005. (basis pursuit formulation)
+
+**`14_lasso.py`**
+- R. Tibshirani, "Regression Shrinkage and Selection via the Lasso," Journal
+  of the Royal Statistical Society B, vol. 58, no. 1, pp. 267-288, 1996.
+- A. Beck and M. Teboulle, "A Fast Iterative Shrinkage-Thresholding
+  Algorithm for Linear Inverse Problems," SIAM Journal on Imaging Sciences,
+  vol. 2, no. 1, pp. 183-202, 2009.
+
+**`15_aadm.py`**
+- S. Boyd, N. Parikh, E. Chu, B. Peleato and J. Eckstein, "Distributed
+  Optimization and Statistical Learning via the Alternating Direction
+  Method of Multipliers," Foundations and Trends in Machine Learning,
+  vol. 3, no. 1, pp. 1-122, 2011. (section 3.4.1: varying the penalty
+  parameter)
+- M. Figueiredo and J. Bioucas-Dias, "Restoration of Poissonian Images
+  Using Alternating Direction Optimization," IEEE Transactions on Image
+  Processing, vol. 20, no. 10, pp. 2752-2766, 2011. (ADMM for sparse
+  reconstruction)
+
+**`16_bregman.py`**
+- S. Osher, M. Burger, D. Goldfarb, J. Xu and W. Yin, "An Iterative
+  Regularization Method for Total Variation-Based Image Restoration,"
+  Multiscale Modeling and Simulation, vol. 4, no. 2, pp. 460-489, 2005.
+- W. Yin, S. Osher, D. Goldfarb and J. Darbon, "Bregman Iterative
+  Algorithms for l1-Minimization with Applications to Compressive Sensing,"
+  SIAM Journal on Imaging Sciences, vol. 1, no. 1, pp. 143-168, 2008.
+
+**`17_hhs.py`**
+- G. Cormode and M. Hadjieleftheriou, "Finding Frequent Items in Data
+  Streams," Proceedings of the VLDB Endowment, vol. 1, no. 2, pp. 1530-1541,
+  2008. (count-sketch heavy hitter tracking)
+- P. Berinde, A. C. Gilbert, P. Indyk, H. Karloff and M. J. Strauss,
+  "Combining Geometry and Combinatorics: A Unified Approach to Sparse
+  Signal Recovery," 46th Annual Allerton Conference on Communication,
+  Control, and Computing, 2008. (heavy-hitter recovery in compressed
+  sensing)
+- K. L. Clarkson and D. P. Woodruff, "Low Rank Approximation and Regression
+  in Input Sparsity Time," STOC 2013, pp. 81-90, 2013. (sketch-based linear
+  algebra)
+
+**`18_amp.py`**
+- D. L. Donoho, A. Maleki and A. Montanari, "Message Passing Algorithms for
+  Compressed Sensing," Proceedings of the National Academy of Sciences,
+  vol. 106, no. 45, pp. 18914-18919, 2009.
+- M. Bayati and A. Montanari, "The Dynamics of Message Passing on Dense
+  Graphs, with Applications to Compressed Sensing," IEEE Transactions on
+  Information Theory, vol. 57, no. 2, pp. 764-785, Feb. 2011. (state
+  evolution analysis)
+
+**Toolbox (`opt/`)**
+- N. Parikh and S. Boyd, "Proximal Algorithms," Foundations and Trends in
+  Optimization, vol. 1, no. 3, pp. 127-239, 2014. (`opt/prox.py`)
+- A. Beck and M. Teboulle, "A Fast Iterative Shrinkage-Thresholding
+  Algorithm for Linear Inverse Problems," SIAM Journal on Imaging Sciences,
+  vol. 2, no. 1, pp. 183-202, 2009. (`opt/gradient.py`)
+- J. R. Shewchuk, "An Introduction to the Conjugate Gradient Method Without
+  the Painful Derivation," Carnegie Mellon University, 1994. (`opt/lsqr.py`)
+- J. Nocedal and S. J. Wright, "Numerical Optimization," 2nd ed., Springer,
+  2006. (line search and conjugate gradient; `opt/gradient.py`,
+  `opt/lsqr.py`)
+- S. Boyd, N. Parikh, E. Chu, B. Peleato and J. Eckstein, "Distributed
+  Optimization and Statistical Learning via the Alternating Direction
+  Method of Multipliers," Foundations and Trends in Machine Learning,
+  vol. 3, no. 1, pp. 1-122, 2011. (`opt/admm.py`)
+- T. S. Ferguson, "Linear Programming: A Concise Introduction," UCLA course
+  notes, 2006. (`opt/dantzig.py`)
+- S. J. Wright, "Primal-Dual Interior-Point Methods," SIAM, 1997.
+  (`opt/dantzig.py`)

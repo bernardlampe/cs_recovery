@@ -116,4 +116,4 @@ if __name__ == "__main__":
 
         # adaptive-penalty ADMM needs many iterations; cap so the demo ends
         x_h = aadm(y, A, epsilon_term, 0.00001, lam=0.03, max_iters=8000, tol=1e-9)
-        plt_error(x_h, x_f, 'aadm, lam = 0.03', alg='aadm')
+        plt_error(x_h, x_f, 'aadm, lam = 0.03', alg='aadm_epsilon')

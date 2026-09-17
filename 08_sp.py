@@ -74,5 +74,5 @@ if __name__ == "__main__":
         (y, A, x_t, x_f) = gen_test_signal(snr_db=db, k=10, n=200, amps_l=-10, amps_h=10)
 
         x_h, support, residuals = subspace_pursuit(A, y.ravel(), 20)
-        plt_error(x_h, x_f.ravel(), 'sparsity_term, k = 20', alg='sp')
+        plt_error(x_h, x_f.ravel(), 'sparsity_term, k = 20', alg='sp_sparsity')
 

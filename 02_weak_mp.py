@@ -81,10 +81,10 @@ if __name__ == "__main__":
         (y, A, x_t, x_f) = gen_test_signal(snr_db=db, k=10, n=200, amps_l=-10, amps_h=10)
 
         x_h = weak_mp(y, A, sparsity_term, 20, mu=0.9)
-        plt_error(x_h, x_f, 'sparsity_term, k = 20, mu = 0.9', alg='weak_mp')
+        plt_error(x_h, x_f, 'sparsity_term, k = 20, mu = 0.9', alg='weak_mp_sparsity')
 
         x_h = weak_mp(y, A, percent_term, 0.99, mu=0.9)
-        plt_error(x_h, x_f, 'percent_term, p = 0.99, mu = 0.9', alg='weak_mp')
+        plt_error(x_h, x_f, 'percent_term, p = 0.99, mu = 0.9', alg='weak_mp_percent')
 
         x_h = weak_mp(y, A, epsilon_term, 0.00001, mu=0.9)
-        plt_error(x_h, x_f, 'epsilon_term, mu = 0.9, e = 0.00001', alg='weak_mp')
+        plt_error(x_h, x_f, 'epsilon_term, mu = 0.9, e = 0.00001', alg='weak_mp_epsilon')
