@@ -114,7 +114,7 @@ if __name__ == "__main__":
     from common import *
 
     for db in [None, 20]:
-        (y, A, x_t, x_f) = gen_test_signal(snr_db=db)
+        (y, A, x_t, x_f) = gen_test_signal(snr_db=db, k=10, n=200, amps_l=-10, amps_h=10)
 
         x_h = hhs(y, A, sparsity_term, 20)
-        plt_error(x_h, x_f, 'sparsity_term, k = 20')
+        plt_error(x_h, x_f, 'sparsity_term, k = 20', alg='hhs')

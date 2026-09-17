@@ -66,7 +66,7 @@ if __name__ == "__main__":
     from common import *
 
     for db in [None, 20]:
-        (y, A, x_t, x_f) = gen_test_signal(snr_db=db)
+        (y, A, x_t, x_f) = gen_test_signal(snr_db=db, k=10, n=200, amps_l=-10, amps_h=10)
 
         x_h = lasso(y, A, epsilon_term, 0.00001, lam=1e-5)
-        plt_error(x_h, x_f, 'lasso, lam = 0.1')
+        plt_error(x_h, x_f, 'lasso, lam = 0.1', alg='lasso')

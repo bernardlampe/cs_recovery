@@ -38,7 +38,7 @@ if __name__ == "__main__":
     from common import *
 
     for db in [None, 20]:
-        (y, A, x_t, x_f) = gen_test_signal(snr_db=db)
+        (y, A, x_t, x_f) = gen_test_signal(snr_db=db, k=10, n=200, amps_l=-10, amps_h=10)
 
         x_h = bp_linprog(y, A)
-        plt_error(x_h, x_f, 'bp linprog')
+        plt_error(x_h, x_f, 'bp linprog', alg='bp_linprog')

@@ -66,3 +66,13 @@ def subspace_pursuit(Phi, y, K, max_iter=100, tol=1e-6):
     x_hat = np.zeros(n)
     x_hat[list(support)] = x_S
     return x_hat, list(support), residuals
+
+if __name__ == "__main__":
+    from common import *
+
+    for db in [None, 20]:
+        (y, A, x_t, x_f) = gen_test_signal(snr_db=db, k=10, n=200, amps_l=-10, amps_h=10)
+
+        x_h, support, residuals = subspace_pursuit(A, y.ravel(), 20)
+        plt_error(x_h, x_f.ravel(), 'sparsity_term, k = 20', alg='sp')
+

@@ -90,7 +90,7 @@ if __name__ == "__main__":
     from common import *
 
     for db in [None, 20]:
-        (y, A, x_t, x_f) = gen_test_signal(snr_db=db)
+        (y, A, x_t, x_f) = gen_test_signal(snr_db=db, k=10, n=200, amps_l=-10, amps_h=10)
 
         x_h = iht(y, A, epsilon_term, 0.00001, 20)
-        plt_error(x_h, x_f, 'epsilon_term, k = 20, e = 0.00001')
+        plt_error(x_h, x_f, 'epsilon_term, k = 20, e = 0.00001', alg='iht')

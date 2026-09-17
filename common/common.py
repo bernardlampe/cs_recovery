@@ -88,9 +88,6 @@ def gen_rand_gauss_signal(k, n, amps_l, amps_h, snr_db):
         signal_t = add_awgn(signal_t, snr_db)
         signal_f = dct(signal_t, norm='ortho', axis=0)
 
-    plt_signal(signal_t, 'Time domain signal_t')
-    plt_signal(signal_f, 'Frequency domain signal_f')
-
     # sample the signal
     y = np.dot(A, signal_t)
 
@@ -99,7 +96,7 @@ def gen_rand_gauss_signal(k, n, amps_l, amps_h, snr_db):
 
     return (y, Ap, k, signal_t, signal_f)
 
-def plt_error(x_hat, x_f, title):
+def plt_error(x_hat, x_f, title, alg=None):
     # compute the error
     sse = np.sum((x_hat - x_f)**2)
 
@@ -108,20 +105,38 @@ def plt_error(x_hat, x_f, title):
     plt.stem(x_hat,  markerfmt='ro')
     plt.stem(x_f,  markerfmt='b-')
     plt.title(title + f', sse = {sse}')
-    plt.savefig(f'out/{slug(title)}.png', dpi=110)
+    plt.savefig(outname(alg or title), dpi=110)
     plt.close()
+
+def outname(alg, tag=''):
+    """
+    collision-free output name: folder/algo_[tag_]YYYYmmdd_HHMMSS
+
+    Every figure carries the generating algorithm prefix and a
+    timestamp so repeated runs never overwrite earlier results.
+    """
+    import datetime
+    stamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    base = slug(str(alg))
+    return f'out/{base}{("_" + slug(tag)) if tag else ""}_{stamp}.png'
 
 def slug(text):
     """
-    filesystem-safe title for the output figure name
+    filesystem-safe title fragment
     """
     keep = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-    slug = ''.join(c if c in keep else '_' for c in text)
+    slug = ''.join(c if c in keep else '_' for c in str(text))
     return slug[:80]
 
-def plt_signal(signal, title):
+def plt_signal(signal, title, alg=None):
     plt.plot(signal)
     plt.title(title)
     plt.grid()
-    plt.savefig(f'out/{slug(title)}.png', dpi=110)
+    plt.savefig(outname(alg or title), dpi=110)
     plt.close()
+
+if __name__ == "__main__":
+    # standalone: visualize the standard signal pair
+    (y, A, x_t, x_f) = gen_test_signal(snr_db=None, k=10, n=200, amps_l=-10, amps_h=10)
+    plt_signal(x_t, 'Time domain signal_t', alg='signal_time')
+    plt_signal(x_f, 'Frequency domain signal_f', alg='signal_freq')
