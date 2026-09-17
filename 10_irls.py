@@ -8,7 +8,9 @@ R. Chartrand and Wotao Yin, "Iteratively reweighted algorithms for compressive s
 """
 
 import numpy as np
-import scipy.linalg as lin
+
+# optional per-iteration residual logger (run_all charts read this)
+HISTORY = None
 
 def irls(y, A, term, param, max_iters, delta):
     """
@@ -24,15 +26,17 @@ def irls(y, A, term, param, max_iters, delta):
         x_hat: `reconstructed signal`
     """
 
+    global HISTORY
+
+    HISTORY = []
     x_k = np.ones((A.shape[1], 1))
     r = np.ones((A.shape[1], 1))
-
     i = 0
     while not term(param, y, r, x_k) and i < max_iters:
+        HISTORY.append(float(np.linalg.norm(y - np.dot(A, x_k))))
         W_k = np.diagflat(2 / (np.abs(x_k) + delta))
         alpha = np.linalg.inv(delta * W_k + np.dot(A.T,A))
         x_k = np.dot(np.dot(alpha, A.T), y)
-
         r = x_k - r
         i += 1
 
@@ -40,7 +44,7 @@ def irls(y, A, term, param, max_iters, delta):
 
 # terminate with output signal has sparsity k
 def sparsity_term(k, y, r, x_hat):
-    return int(np.linalg.norm(x_hat, 0, axis=0)) == k
+    return int(np.count_nonzero(x_hat)) == k
 
 # terminate when output signal has p percentage of signal
 def percent_term(p, y, r, x_hat):

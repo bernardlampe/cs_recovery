@@ -8,6 +8,9 @@ References:
 
 import numpy as np
 
+# optional per-iteration residual logger (run_all charts read this)
+HISTORY = None
+
 def focuss(y, A, itrs):
     """
     Parameters:
@@ -19,6 +22,9 @@ def focuss(y, A, itrs):
         x_hat: `reconstructed signal`
     """
 
+    global HISTORY
+
+    HISTORY = []
     x_k = np.ones((A.shape[1], 1))  # init solution non-zero
 
     i = 0
@@ -28,6 +34,7 @@ def focuss(y, A, itrs):
         alpha_plus = np.linalg.pinv(alpha)
         q_k = np.dot(alpha_plus, y)
         x_k = np.dot(W_pk, q_k)             # Step 3: x_k = W_pk * q_k
+        HISTORY.append(float(np.linalg.norm(y - np.dot(A, x_k))))
 
         i+=1
 

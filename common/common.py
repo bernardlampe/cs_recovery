@@ -1,8 +1,52 @@
 #!/usr/bin/python
 
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import scipy.fftpack as fft
+plt.ioff()
 import numpy as np
+
+def dct(x, norm='ortho', axis=0):
+    """
+    Orthonormal DCT-II via a direct O(N^2) matrix build (no scipy).
+
+    Parameters:
+        x: `input array`
+        norm: `only 'ortho' supported (matches scipy.fftpack norm='ortho')`
+        axis: `axis along which to transform`
+    """
+    if norm != 'ortho':
+        raise NotImplementedError("only norm='ortho' supported")
+    return _dct_apply(x, axis, _dct2_matrix(x.shape[axis]))
+
+def idct(x, norm='ortho', axis=0):
+    """
+    Orthonormal DCT-III (inverse of the orthonormal DCT-II), O(N^2) matrix build.
+
+    Parameters:
+        x: `input array`
+        norm: `only 'ortho' supported (matches scipy.fftpack norm='ortho')`
+        axis: `axis along which to transform`
+    """
+    if norm != 'ortho':
+        raise NotImplementedError("only norm='ortho' supported")
+    return _dct_apply(x, axis, _dct3_matrix(x.shape[axis]))
+
+def _dct2_matrix(N):
+    # orthonormal DCT-II basis: X_k = s_k * sum_n x_n cos(pi*(2n+1)*k/(2N))
+    n = np.arange(N).reshape(1, N)               # sample index
+    k = np.arange(N).reshape(N, 1)               # coefficient index
+    C = np.cos(np.pi * (2*n + 1) * k / (2*N))
+    C *= np.sqrt(2.0 / N)                        # scale all rows
+    C[0] *= (1.0 / np.sqrt(2))                   # k = 0 row is unit norm
+    return C
+
+def _dct3_matrix(N):
+    # inverse (transpose) of the orthonormal DCT-II basis
+    return _dct2_matrix(N).T
+
+def _dct_apply(x, axis, T):
+    return np.moveaxis(np.tensordot(T, np.moveaxis(x, axis, 0), axes=1), 0, axis)
 
 def gen_test_signal(k=20, n=1000, amps_l=-100, amps_h=100, snr_db=None):
     (y, A, k, x_t, x_f) = gen_rand_gauss_signal(k, n, amps_l, amps_h, snr_db)
@@ -37,12 +81,12 @@ def gen_rand_gauss_signal(k, n, amps_l, amps_h, snr_db):
     pos = np.random.randint(0, n, (k, 1))
     for i in range(0, len(pos)):
         signal_f[pos[i]] = np.random.randint(amps_l, amps_h)
-    signal_t = fft.idct(signal_f, norm='ortho', axis=0)
+    signal_t = idct(signal_f, norm='ortho', axis=0)
 
     # add noise
     if snr_db:
         signal_t = add_awgn(signal_t, snr_db)
-        signal_f = fft.dct(signal_t, norm='ortho', axis=0)
+        signal_f = dct(signal_t, norm='ortho', axis=0)
 
     plt_signal(signal_t, 'Time domain signal_t')
     plt_signal(signal_f, 'Frequency domain signal_f')
@@ -50,7 +94,7 @@ def gen_rand_gauss_signal(k, n, amps_l, amps_h, snr_db):
     # sample the signal
     y = np.dot(A, signal_t)
 
-    D = fft.dct(np.eye(A.shape[1]), norm='ortho', axis=0)
+    D = dct(np.eye(A.shape[1]), norm='ortho', axis=0)
     Ap = np.dot(A, D.T)
 
     return (y, Ap, k, signal_t, signal_f)
@@ -64,10 +108,20 @@ def plt_error(x_hat, x_f, title):
     plt.stem(x_hat,  markerfmt='ro')
     plt.stem(x_f,  markerfmt='b-')
     plt.title(title + f', sse = {sse}')
-    plt.show()
+    plt.savefig(f'out/{slug(title)}.png', dpi=110)
+    plt.close()
+
+def slug(text):
+    """
+    filesystem-safe title for the output figure name
+    """
+    keep = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    slug = ''.join(c if c in keep else '_' for c in text)
+    return slug[:80]
 
 def plt_signal(signal, title):
     plt.plot(signal)
     plt.title(title)
     plt.grid()
-    plt.show()
+    plt.savefig(f'out/{slug(title)}.png', dpi=110)
+    plt.close()

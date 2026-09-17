@@ -1,8 +1,20 @@
 import numpy as np
 
+
 def omp_rls(A, y, term, param, lam=1.0, delta=1e-3):
     """
     Orthogonal Matching Pursuit with Recursive Least Squares update.
+
+    References:
+        D. Zachariah, S. Chatterjee and M. Jansson, "Online Network
+        Response Identification with Recursive Least Squares,"
+        Signal Processing, vol. 103, pp. 237-246, 2014.
+        (RLS support-extension viewpoint)
+
+        Hammeed, Maxin Abdulrasool, "Comparative Analysis of Orthogonal
+        Matching Pursuit and least angle regression," Michigan State
+        University, A Thesis for Masters of Science, 2012.
+        (OMP termination conventions)
 
     Parameters
     ----------
@@ -57,7 +69,7 @@ def omp_rls(A, y, term, param, lam=1.0, delta=1e-3):
 
 # terminate with output signal has sparsity k
 def sparsity_term(k, y, r, x_hat):
-    return int(np.linalg.norm(x_hat, 0, axis=0)) == k
+    return int(np.count_nonzero(x_hat)) == k
 
 # terminate when output signal has p percentage of signal
 def percent_term(p, y, r, x_hat):

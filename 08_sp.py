@@ -3,7 +3,12 @@ import numpy as np
 def subspace_pursuit(Phi, y, K, max_iter=100, tol=1e-6):
     """
     Subspace Pursuit (SP) algorithm for sparse recovery.
-    
+
+    References:
+        W. Dai and O. Milenkovic, "Subspace Pursuit for Compressive
+        Sensing Signal Reconstruction," IEEE Transactions on
+        Information Theory, vol. 55, no. 5, pp. 2230-2249, May 2009.
+
     Parameters
     ----------
     Phi : ndarray of shape (m, n)

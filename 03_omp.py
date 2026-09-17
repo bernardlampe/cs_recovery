@@ -12,7 +12,6 @@ References:
 """
 
 import numpy as np
-import scipy.linalg as lin
 
 def omp(y, A, term, param):
     """
@@ -53,7 +52,7 @@ def omp(y, A, term, param):
 
 # terminate with output signal has sparsity k
 def sparsity_term(k, y, r, x_hat):
-    return int(np.linalg.norm(x_hat, 0, axis=0)) == k
+    return int(np.count_nonzero(x_hat)) == k
 
 # terminate when output signal has p percentage of signal
 def percent_term(p, y, r, x_hat):

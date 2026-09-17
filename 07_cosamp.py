@@ -1,8 +1,15 @@
 import numpy as np
 
-def cosamp(A, y, k, term, param):
+# optional per-iteration residual logger (run_all charts read this)
+HISTORY = None
+def cosamp(A, y, k, term, param, max_iters=100):
     """
     CoSaMP algorithm for sparse signal reconstruction.
+
+    References:
+        D. Needell and J. A. Tropp, "CoSaMP: Iterative signal recovery
+        from incomplete and inaccurate samples," Applied and Computational
+        Harmonic Analysis, vol. 26, no. 3, pp. 301-321, 2009.
 
     Parameters
     ----------
@@ -16,12 +23,16 @@ def cosamp(A, y, k, term, param):
     -------
     x_hat : ndarray (n,), Reconstructed sparse signal.
     """
+    global HISTORY
 
+    HISTORY = [] if HISTORY is None else HISTORY
     m, n = A.shape
-    x_hat = np.zeros(n)
     r = y.copy()
+    x_hat = np.zeros(n)
 
-    while not term(param, y, r, x_hat):
+    while not term(param, y, r, x_hat) and len(HISTORY) < max_iters:
+        if HISTORY is not None:
+            HISTORY.append(float(np.linalg.norm(r)))
         # Step 1: Proxy signal
         proxy = A.T @ r
 
@@ -33,13 +44,13 @@ def cosamp(A, y, k, term, param):
 
         # Step 4: Solve least squares on merged support
         A_support = A[:, support]
-        b_support, _, _, _ = np.linalg.lstsq(A_support, y, rcond=None)
+        b_support, _, _, _ = np.linalg.lstsq(A_support, y.ravel(), rcond=None)
 
         # Step 5: Prune to best k entries
         idx = np.argsort(np.abs(b_support))[-k:]
         support = support[idx]
         x_temp = np.zeros(n)
-        x_temp[support] = b_support[idx]
+        x_temp[support] = b_support[idx].ravel()
 
         # Step 6: Update r
         r = y - A @ x_temp
@@ -51,7 +62,7 @@ def cosamp(A, y, k, term, param):
 
 # terminate with output signal has sparsity k
 def sparsity_term(k, y, r, x_hat):
-    return int(np.linalg.norm(x_hat, 0, axis=0)) == k
+    return int(np.count_nonzero(x_hat)) == k
 
 # terminate when output signal has p percentage of signal
 def percent_term(p, y, r, x_hat):

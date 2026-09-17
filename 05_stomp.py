@@ -2,8 +2,10 @@
 Stagewise Orthogonal Match Pursuit Sparse Signal Recovery
 
 References:
-    D. Donoho, Y. Tsaig, I. Drori, J Starck, "Sparse Solution of Underdetermined Linear Equations
-    by Stagewise Orthogonal Matching Pursuit,", March 2006
+    D. L. Donoho, Y. Tsaig, I. Drori and J.-L. Starck, "Sparse Solution
+    of Underdetermined Linear Equations by Stagewise Orthogonal
+    Matching Pursuit," IEEE Transactions on Information Theory,
+    vol. 58, no. 2, pp. 1094-1121, Feb. 2012.
 
     Hammeed, Maxin Abdulrasool, "Comparative Analysis of Orthogonal Matching Pursuit
     and least angle regression," Michigan State University, A Thesis for Masters of
@@ -13,7 +15,9 @@ References:
 """
 
 import numpy as np
-import scipy.linalg as lin
+
+# optional per-iteration residual logger (run_all charts read this)
+HISTORY = None
 
 def stomp(y, A, sigma, N):
     """
@@ -29,12 +33,16 @@ def stomp(y, A, sigma, N):
         x_hat: `reconstructed signal`
     """
 
+    global HISTORY
+
+    HISTORY = []
     r = np.copy(y)       # init residual
     lamda = set()        # set of support indicies
     x = np.array([])     # null output init
     n = A.shape[1]       # size of solution
 
     for t in range(N):
+        HISTORY.append(float(np.linalg.norm(r)))
         c = np.dot(A.T, r)                  # correlation
         thr = sigma * np.std(r)             # compute number of std devs for threshold
         inds = np.nonzero(np.abs(c) > thr)  # find abs support above threshold

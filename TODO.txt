@@ -1,9 +1,0 @@
-* Write Gradient pursuit,  weak mp
-* Write IHT reconstruction
-* Write LARS reconstruction
-* Write BP reconstruction via linprog
-* Write LASSO reconstruction
-* Write AADM reconstruction
-* Write Bregman iterative
-* Heavy Hitters on Steroids (HHS)
-* Write belief propagation or MAP reconstruction
