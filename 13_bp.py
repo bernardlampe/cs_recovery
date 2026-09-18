@@ -20,8 +20,6 @@ import numpy as np
 
 def bp_linprog(y, A):
     """
-    basis pursuit reconstruction via the hand-written simplex LP
-
     Parameters:
         y: `compressed samples`
         A: `sampling matrix`
@@ -37,8 +35,7 @@ def bp_linprog(y, A):
 if __name__ == "__main__":
     from common import *
 
-    for db in [None, 20]:
-        (y, A, x_t, x_f) = gen_test_signal(snr_db=db, k=10, n=200, amps_l=-10, amps_h=10)
+    (y, A, x_t, x_f) = gen_test_signal(snr_db=20, k=10, n=200, amps_l=-10, amps_h=10)
 
-        x_h = bp_linprog(y, A)
-        plt_error(x_h, x_f, 'bp linprog', alg='bp_linprog')
+    x_h = bp_linprog(y, A)
+    plt_error(x_h, x_f, 'bp linprog', alg='bp_linprog')

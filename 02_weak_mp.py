@@ -2,11 +2,6 @@
 
 """ Weak Matching Pursuit Sparse Signal Recovery
 
-Weak (Gain) Matching Pursuit greedily selects any atom whose
-correlation exceeds a fraction of the current best, trading MP's
-full greedy certainty for cheaper selection and a tunable
-convergence guarantee (parametrized by 0.5 < mu < 1).
-
 References:
     T. Blumensath and M. E. Davies, "Gradient Pursuits," IEEE
     Transactions on Signal Processing, vol. 56, no. 6, pp. 2370-2382,
@@ -21,8 +16,6 @@ import numpy as np
 
 def weak_mp(y, A, term, param, mu=0.5):
     """
-    weak matching pursuit with configurable termination criteria
-
     Instead of the arg-max atom of plain MP, weak MP accepts any
     atom with correlation at least mu times the peak correlation:
         |A_j^T r| >= mu * max_i |A_i^T r|
@@ -40,6 +33,7 @@ def weak_mp(y, A, term, param, mu=0.5):
         x_hat: `reconstructed signal`
     """
 
+    y = np.asarray(y).reshape(-1, 1)     # accept flat or column measurements
     r = np.copy(y)                       # init residual
     support = []                         # list of support loc inds
     mask = np.ones(A.shape[1], dtype=bool)  # atoms not yet in support
@@ -77,14 +71,13 @@ def epsilon_term(e, y, r, x_hat):
 if __name__ == "__main__":
     from common import *
 
-    for db in [None, 20]:
-        (y, A, x_t, x_f) = gen_test_signal(snr_db=db, k=10, n=200, amps_l=-10, amps_h=10)
+    (y, A, x_t, x_f) = gen_test_signal(snr_db=20, k=10, n=200, amps_l=-10, amps_h=10)
 
-        x_h = weak_mp(y, A, sparsity_term, 20, mu=0.9)
-        plt_error(x_h, x_f, 'sparsity_term, k = 20, mu = 0.9', alg='weak_mp_sparsity')
+    x_h = weak_mp(y, A, sparsity_term, 20, mu=0.9)
+    plt_error(x_h, x_f, 'sparsity_term, k = 20, mu = 0.9', alg='weak_mp_sparsity')
 
-        x_h = weak_mp(y, A, percent_term, 0.99, mu=0.9)
-        plt_error(x_h, x_f, 'percent_term, p = 0.99, mu = 0.9', alg='weak_mp_percent')
+    x_h = weak_mp(y, A, percent_term, 0.99, mu=0.9)
+    plt_error(x_h, x_f, 'percent_term, p = 0.99, mu = 0.9', alg='weak_mp_percent')
 
-        x_h = weak_mp(y, A, epsilon_term, 0.00001, mu=0.9)
-        plt_error(x_h, x_f, 'epsilon_term, mu = 0.9, e = 0.00001', alg='weak_mp_epsilon')
+    x_h = weak_mp(y, A, epsilon_term, 0.00001, mu=0.9)
+    plt_error(x_h, x_f, 'epsilon_term, mu = 0.9, e = 0.00001', alg='weak_mp_epsilon')

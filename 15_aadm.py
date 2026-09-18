@@ -34,8 +34,6 @@ HISTORY = None
 def aadm(y, A, term, param, lam=0.03, rho=1.0, max_iters=50000, tol=1e-11,
          mu=5.0, beta=1.5):
     """
-    adaptive-penalty ADMM reconstruction
-
     Parameters:
         y: `compressed samples`
         A: `sampling matrix`
@@ -95,15 +93,6 @@ def aadm(y, A, term, param, lam=0.03, rho=1.0, max_iters=50000, tol=1e-11,
 
     return x_hat
 
-# terminate with output signal has sparsity k
-def sparsity_term(k, y, r, x_hat):
-    return int(np.linalg.norm(x_hat.ravel(), 0)) == k
-
-# terminate when output signal has p percentage of signal
-def percent_term(p, y, r, x_hat):
-    y_l2p = np.linalg.norm(y) * (1.0-p)
-    return y_l2p > np.linalg.norm(r)
-
 # terminate when energy (L2 norm) of remaining residual falls below this energy
 def epsilon_term(e, y, r, x_hat):
     return e > np.linalg.norm(r)
@@ -111,9 +100,8 @@ def epsilon_term(e, y, r, x_hat):
 if __name__ == "__main__":
     from common import *
 
-    for db in [None, 20]:
-        (y, A, x_t, x_f) = gen_test_signal(snr_db=db, k=10, n=200, amps_l=-10, amps_h=10)
+    (y, A, x_t, x_f) = gen_test_signal(snr_db=20, k=10, n=200, amps_l=-10, amps_h=10)
 
-        # adaptive-penalty ADMM needs many iterations; cap so the demo ends
-        x_h = aadm(y, A, epsilon_term, 0.00001, lam=0.03, max_iters=8000, tol=1e-9)
-        plt_error(x_h, x_f, 'aadm, lam = 0.03', alg='aadm_epsilon')
+    # adaptive-penalty ADMM needs many iterations; cap so the demo ends
+    x_h = aadm(y, A, epsilon_term, 0.00001, lam=0.03, max_iters=8000, tol=1e-9)
+    plt_error(x_h, x_f, 'aadm, lam = 0.03', alg='aadm_epsilon')

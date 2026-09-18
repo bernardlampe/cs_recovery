@@ -31,8 +31,6 @@ import numpy as np
 
 def lars(y, A, term, param, max_iters=None):
     """
-    lars path reconstruction with configurable termination
-
     Parameters:
         y: `compressed samples`
         A: `sampling matrix`
@@ -103,14 +101,13 @@ def epsilon_term(e, y, r, x_hat):
 if __name__ == "__main__":
     from common import *
 
-    for db in [None, 20]:
-        (y, A, x_t, x_f) = gen_test_signal(snr_db=db, k=10, n=200, amps_l=-10, amps_h=10)
+    (y, A, x_t, x_f) = gen_test_signal(snr_db=20, k=10, n=200, amps_l=-10, amps_h=10)
 
-        x_h = lars(y, A, sparsity_term, 20)
-        plt_error(x_h, x_f, 'sparsity_term, k = 20', alg='lars_sparsity')
+    x_h = lars(y, A, sparsity_term, 20)
+    plt_error(x_h, x_f, 'sparsity_term, k = 20', alg='lars_sparsity')
 
-        x_h = lars(y, A, percent_term, 0.99)
-        plt_error(x_h, x_f, 'percent_term, p = 0.99', alg='lars_percent')
+    x_h = lars(y, A, percent_term, 0.99)
+    plt_error(x_h, x_f, 'percent_term, p = 0.99', alg='lars_percent')
 
-        x_h = lars(y, A, epsilon_term, 0.00001)
-        plt_error(x_h, x_f, 'epsilon_term, e = 0.00001', alg='lars_epsilon')
+    x_h = lars(y, A, epsilon_term, 0.00001)
+    plt_error(x_h, x_f, 'epsilon_term, e = 0.00001', alg='lars_epsilon')

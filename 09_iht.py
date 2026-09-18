@@ -73,15 +73,6 @@ def _hard_threshold(z, k):
     out.ravel()[inds] = z.ravel()[inds]
     return out
 
-# terminate with output signal has sparsity k
-def sparsity_term(k, y, r, x_hat):
-    return int(np.linalg.norm(x_hat.ravel(), 0)) == k
-
-# terminate when output signal has p percentage of signal
-def percent_term(p, y, r, x_hat):
-    y_l2p = np.linalg.norm(y) * (1.0-p)
-    return y_l2p > np.linalg.norm(r)
-
 # terminate when energy (L2 norm) of remaining residual falls below this energy
 def epsilon_term(e, y, r, x_hat):
     return e > np.linalg.norm(r)
@@ -89,8 +80,7 @@ def epsilon_term(e, y, r, x_hat):
 if __name__ == "__main__":
     from common import *
 
-    for db in [None, 20]:
-        (y, A, x_t, x_f) = gen_test_signal(snr_db=db, k=10, n=200, amps_l=-10, amps_h=10)
+    (y, A, x_t, x_f) = gen_test_signal(snr_db=20, k=10, n=200, amps_l=-10, amps_h=10)
 
-        x_h = iht(y, A, epsilon_term, 0.00001, 20)
-        plt_error(x_h, x_f, 'epsilon_term, k = 20, e = 0.00001', alg='iht_epsilon')
+    x_h = iht(y, A, epsilon_term, 0.00001, 20)
+    plt_error(x_h, x_f, 'epsilon_term, k = 20, e = 0.00001', alg='iht_epsilon')

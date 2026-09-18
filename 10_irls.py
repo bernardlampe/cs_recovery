@@ -62,14 +62,13 @@ if __name__ == "__main__":
     max_iters = 100  # max number of algorithm iterations
     delta = 0.0001   # regularization delta
 
-    for db in [None, 20]:
-        (y, A, x_t, x_f) = gen_test_signal(snr_db=db, k=10, n=200, amps_l=-10, amps_h=10)
+    (y, A, x_t, x_f) = gen_test_signal(snr_db=20, k=10, n=200, amps_l=-10, amps_h=10)
 
-        x_h = irls(y, A, sparsity_term, 20, max_iters, delta)
-        plt_error(x_h, x_f, 'sparsity_term, k = 20', alg='irls_sparsity')
+    x_h = irls(y, A, sparsity_term, 20, max_iters, delta)
+    plt_error(x_h, x_f, 'sparsity_term, k = 20', alg='irls_sparsity')
 
-        x_h = irls(y, A, percent_term, 0.99, max_iters, delta)
-        plt_error(x_h, x_f, 'percent_term, p = 0.99', alg='irls_percent')
+    x_h = irls(y, A, percent_term, 0.99, max_iters, delta)
+    plt_error(x_h, x_f, 'percent_term, p = 0.99', alg='irls_percent')
 
-        x_h = irls(y, A, epsilon_term, 0.00001, max_iters, delta)
-        plt_error(x_h, x_f, 'epsilon_term, k = 0.00001', alg='irls_epsilon')
+    x_h = irls(y, A, epsilon_term, 0.00001, max_iters, delta)
+    plt_error(x_h, x_f, 'epsilon_term, k = 0.00001', alg='irls_epsilon')

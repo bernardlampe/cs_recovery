@@ -98,9 +98,7 @@ def gen_rand_gauss_signal(k, n, amps_l, amps_h, snr_db):
 
 def plt_error(x_hat, x_f, title, alg=None):
     # compute the error
-    sse = np.sum((x_hat - x_f)**2)
-
-    # plot it
+    sse = np.sum((np.ravel(x_hat) - np.ravel(x_f))**2)
     plt.figure(0)
     plt.stem(x_hat,  markerfmt='ro')
     plt.stem(x_f,  markerfmt='b-')

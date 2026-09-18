@@ -2,12 +2,6 @@
 
 """ Gradient Pursuit Sparse Signal Recovery
 
-Blumensath-Davies Gradient Pursuit: after greedily detecting a
-support, update the coefficients with a conjugate-gradient descent
-step on that support instead of an exact least-squares solve. One
-CG sweep per iteration keeps the per-iteration cost at the matching
-pursuit level while converging far faster than steepest descent.
-
 References:
     T. Blumensath and M. E. Davies, "Gradient Pursuits," IEEE
     Transactions on Signal Processing, vol. 56, no. 6, pp. 2370-2382,
@@ -18,7 +12,11 @@ import numpy as np
 
 def gradient_pursuit(y, A, term, param, cg_iters=10, max_iters=200):
     """
-    gradient pursuit with configurable termination criteria
+    Blumensath-Davies Gradient Pursuit: after greedily detecting a
+    support, update the coefficients with a conjugate-gradient descent
+    step on that support instead of an exact least-squares solve. One
+    CG sweep per iteration keeps the per-iteration cost at the matching
+    pursuit level while converging far faster than steepest descent.
 
     Each iteration:
         1. detect the atom most correlated with the residual
@@ -91,8 +89,9 @@ def _cg_on_support(P, y, iters, x0):
     """
     H = lambda v: np.dot(P.T, np.dot(P, v))    # support normal operator
     b = np.dot(P.T, y)
-    x = np.zeros((P.shape[1], 1)) if x0 is None or x0.shape[0] != P.shape[1] \
-        else np.copy(x0)
+    x = np.zeros((P.shape[1], 1))
+    if x0 is not None:
+        x[:x0.shape[0]] = x0      # warm start: keep previous coefficients
     r_k = b - H(x)                       # CG residual on support
     p_k = np.copy(r_k)
     rr = np.dot(r_k.T, r_k)
@@ -101,7 +100,9 @@ def _cg_on_support(P, y, iters, x0):
         x = x + alpha * p_k
         r_new = r_k - alpha * H(p_k)
         rrn = np.dot(r_new.T, r_new)
-        p_k = r_new + (rrn / (rr + 1e-15)) * p_k   # Polak-Ribiere update
+        beta = ((rrn - r_new.T @ r_k) / (rr + 1e-15)).item()  # Polak-Ribiere
+        beta = max(beta, 0.0)     # PR+ safeguard keeps p_k a descent dir
+        p_k = r_new + beta * p_k
         r_k, rr = r_new, rrn
     return x
 
@@ -121,14 +122,13 @@ def epsilon_term(e, y, r, x_hat):
 if __name__ == "__main__":
     from common import *
 
-    for db in [None, 20]:
-        (y, A, x_t, x_f) = gen_test_signal(snr_db=db, k=10, n=200, amps_l=-10, amps_h=10)
+    (y, A, x_t, x_f) = gen_test_signal(snr_db=20, k=10, n=200, amps_l=-10, amps_h=10)
 
-        x_h = gradient_pursuit(y, A, sparsity_term, 20)
-        plt_error(x_h, x_f, 'sparsity_term, k = 20', alg='gradient_pursuit_sparsity')
+    x_h = gradient_pursuit(y, A, sparsity_term, 20)
+    plt_error(x_h, x_f, 'sparsity_term, k = 20', alg='gradient_pursuit_sparsity')
 
-        x_h = gradient_pursuit(y, A, percent_term, 0.99)
-        plt_error(x_h, x_f, 'percent_term, p = 0.99', alg='gradient_pursuit_percent')
+    x_h = gradient_pursuit(y, A, percent_term, 0.99)
+    plt_error(x_h, x_f, 'percent_term, p = 0.99', alg='gradient_pursuit_percent')
 
-        x_h = gradient_pursuit(y, A, epsilon_term, 0.00001)
-        plt_error(x_h, x_f, 'epsilon_term, e = 0.00001', alg='gradient_pursuit_epsilon')
+    x_h = gradient_pursuit(y, A, epsilon_term, 0.00001)
+    plt_error(x_h, x_f, 'epsilon_term, e = 0.00001', alg='gradient_pursuit_epsilon')

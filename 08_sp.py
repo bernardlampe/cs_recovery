@@ -1,14 +1,18 @@
+#!/usr/bin/python
+
+"""
+Subspace Pursuit (SP) algorithm for sparse recovery.
+
+References:
+    W. Dai and O. Milenkovic, "Subspace Pursuit for Compressive
+    Sensing Signal Reconstruction," IEEE Transactions on
+    Information Theory, vol. 55, no. 5, pp. 2230-2249, May 2009.
+"""
+
 import numpy as np
 
 def subspace_pursuit(Phi, y, K, max_iter=100, tol=1e-6):
     """
-    Subspace Pursuit (SP) algorithm for sparse recovery.
-
-    References:
-        W. Dai and O. Milenkovic, "Subspace Pursuit for Compressive
-        Sensing Signal Reconstruction," IEEE Transactions on
-        Information Theory, vol. 55, no. 5, pp. 2230-2249, May 2009.
-
     Parameters
     ----------
     Phi : ndarray of shape (m, n)
@@ -70,9 +74,8 @@ def subspace_pursuit(Phi, y, K, max_iter=100, tol=1e-6):
 if __name__ == "__main__":
     from common import *
 
-    for db in [None, 20]:
-        (y, A, x_t, x_f) = gen_test_signal(snr_db=db, k=10, n=200, amps_l=-10, amps_h=10)
+    (y, A, x_t, x_f) = gen_test_signal(snr_db=20, k=10, n=200, amps_l=-10, amps_h=10)
 
-        x_h, support, residuals = subspace_pursuit(A, y.ravel(), 20)
-        plt_error(x_h, x_f.ravel(), 'sparsity_term, k = 20', alg='sp_sparsity')
+    x_h, support, residuals = subspace_pursuit(A, y.ravel(), 20)
+    plt_error(x_h, x_f.ravel(), 'sparsity_term, k = 20', alg='sp_sparsity')
 

@@ -1,12 +1,8 @@
 # From-Scratch Compressive Sensing, A review of reconstruction algorithms
 
-Every sample is a standalone NumPy script. A sparse signal generated in the
+Every algorithm is a standalone script using numpy. A sparse signal generated in the
 DCT domain runs through the whole course by default, so each technique can be
-compared against the previous ones. One shared driver, `convergence_test.py`, collects
-per-iteration residual curves and final errors from every algorithm under two
-measurement cases (noiseless, and noise at SNR = 20 dB), then writes the two
-summary charts. Chart statistics (ranking, console table, best-algorithm
-verdict) are taken from the noiseless case only.
+compared against the previous ones.
 
 The numerical toolbox every algorithm leans on lives in `opt/`:
 
@@ -15,8 +11,6 @@ The numerical toolbox every algorithm leans on lives in `opt/`:
   * `opt/lsqr.py`      - conjugate gradient, regularized normal equations
   * `opt/admm.py`      - two-block ADMM with closed-form z-update
   * `opt/dantzig.py`   - two-phase primal simplex for basis pursuit LPs
-
-Requirements: Python 3, NumPy.
 
 ---
 
@@ -75,7 +69,7 @@ Requirements: Python 3, NumPy.
   iteration instead of an exact LS.
 - **Key insight**: gradient pursuit converges to the same limit as OMP when
   the subproblem is solved accurately (10-12 CG sweeps), but each sweep is
-  cheaper than a full LS: the sweet spot for large supports.
+  cheaper than a full LS: good for large supports.
 
 ### 7. `07_cosamp.py` - Compressive Sampling Matching Pursuit
 - **Concepts**: 2k candidate support, pruning, LS on merged support.
@@ -100,16 +94,14 @@ Requirements: Python 3, NumPy.
   l0 minimization relaxation by projection.
 - **Update**: x ← H_k(x + tau·Aᵀ(y − Ax)); tau = 3/||A||² is the IHT-safe step.
 - **Key insight**: IHT is plain gradient descent where "prox" is projection
-  onto the k-sparse set. Slow to contract (288 its on the standard problem)
-  but robust and streaming friendly.
+  onto the k-sparse set.
 
 ### 10. `10_irls.py` - Iteratively Reweighted Least Squares
 - **Concepts**: surrogate log-sum penalties, weight update W = diag(2/(|x|+d)).
 - **Update**: minimize a weighted-ridge LS per iteration where the weights
   amplify small coefficients (delta e.g. 1e-4 keeps the system invertible).
 - **Key insight**: reweighting approximates l0 from above; as delta → 0 the
-  fixed point approaches the true sparse solution, at the price of noise
-  sensitivity.
+  fixed point approaches the true sparse solution, at the price of noise sensitivity.
 
 ### 11. `11_focuss.py` - FOCal Underdetermined System Solver
 - **Concepts**: multiplicative weight updates (W = diag(x_k)), minimum-norm
@@ -149,7 +141,7 @@ Requirements: Python 3, NumPy.
   at 1/Lipschitz ||A||².
 - **Key insight**: the workhorse formulation - LASSO trades off bias vs
   sparsity through lam: too big over-shrinks (0.03 → 10⁻¹ rel err), too small
-  → dense solution (1e-6 → 197 nonzeros); the lam sweet-spot for exact
+  → dense solution (1e-6 → 197 nonzeros); the lam good for exact
   recovery on this signal is ~1e-5 with a long 21k-iteration tail.
 
 ---
@@ -229,7 +221,8 @@ runs do not clobber earlier results.
 ## Summary lessons
 
   * Greedy (OMP family): fastest per-iteration convergence on easy problems;
-    sensitive to exact sparsity knowledge, degrade gracefully if k is right.
+    sensitive to exact sparsity knowledge, degrade gracefully if sparsity estimates (k)
+    are close.
   * Hard thresholding (IHT family): simple loops, weaker local accuracy.
   * Reweighted (IRLS/FOCUSS): few iterations, need regularization legroom
     (delta) and dense initializations.

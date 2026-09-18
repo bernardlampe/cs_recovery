@@ -1,15 +1,23 @@
+#!/usr/bin/python
+
+"""
+CoSaMP algorithm for sparse signal reconstruction.
+
+References:
+    D. Needell and J. A. Tropp, "CoSaMP: Iterative signal recovery
+    from incomplete and inaccurate samples," Applied and Computational
+    Harmonic Analysis, vol. 26, no. 3, pp. 301-321, 2009.
+"""
+
 import numpy as np
 
 # optional per-iteration residual logger (run_all charts read this)
 HISTORY = None
+_prev_support = None                 # prior iteration's pruned support
+
 def cosamp(A, y, k, term, param, max_iters=100):
     """
     CoSaMP algorithm for sparse signal reconstruction.
-
-    References:
-        D. Needell and J. A. Tropp, "CoSaMP: Iterative signal recovery
-        from incomplete and inaccurate samples," Applied and Computational
-        Harmonic Analysis, vol. 26, no. 3, pp. 301-321, 2009.
 
     Parameters
     ----------
@@ -23,9 +31,10 @@ def cosamp(A, y, k, term, param, max_iters=100):
     -------
     x_hat : ndarray (n,), Reconstructed sparse signal.
     """
-    global HISTORY
-
-    HISTORY = [] if HISTORY is None else HISTORY
+    global HISTORY, _prev_support
+    HISTORY = []
+    _prev_support = None
+    y = np.ravel(y)         # accept (m,1) or (m,) measurements
     m, n = A.shape
     r = y.copy()
     x_hat = np.zeros(n)
@@ -55,14 +64,22 @@ def cosamp(A, y, k, term, param, max_iters=100):
         # Step 6: Update r
         r = y - A @ x_temp
 
-        #  Step 7: Update x_hat estimate
+        # Step 7: Update x_hat estimate (and stabilization bookkeeping)
+        _prev_support = frozenset(np.nonzero(x_hat)[0].tolist())
         x_hat = x_temp
 
     return x_hat
 
-# terminate with output signal has sparsity k
+# terminate with output signal support stabilized at sparsity k
 def sparsity_term(k, y, r, x_hat):
-    return int(np.count_nonzero(x_hat)) == k
+    global _prev_support
+    # CoSaMP emits exactly k nonzeros after the first iteration, so a
+    # nonzero-count test can never gate on k (Needell-Tropp: fixed-support
+    # iterations stop when the pruned support stops changing).
+    sup = frozenset(np.nonzero(x_hat)[0].tolist())
+    ok = (len(sup) == k) and (_prev_support == sup)
+    _prev_support = sup
+    return ok
 
 # terminate when output signal has p percentage of signal
 def percent_term(p, y, r, x_hat):
@@ -76,14 +93,13 @@ def epsilon_term(e, y, r, x_hat):
 if __name__ == "__main__":
     from common import *
 
-    for db in [None, 20]:
-        (y, A, x_t, x_f) = gen_test_signal(snr_db=db, k=10, n=200, amps_l=-10, amps_h=10)
+    (y, A, x_t, x_f) = gen_test_signal(snr_db=20, k=10, n=200, amps_l=-10, amps_h=10)
 
-        x_h = cosamp(A, y, 20, sparsity_term, 20)
-        plt_error(x_h, x_f, 'sparsity_term, k = 20', alg='cosamp_sparsity')
+    x_h = cosamp(A, y, 20, sparsity_term, 20)
+    plt_error(x_h, x_f, 'sparsity_term, k = 20', alg='cosamp_sparsity')
 
-        x_h = cosamp(A, y, 20, percent_term, 0.99)
-        plt_error(x_h, x_f, 'percent_term, p = 0.99', alg='cosamp_percent')
+    x_h = cosamp(A, y, 20, percent_term, 0.99)
+    plt_error(x_h, x_f, 'percent_term, p = 0.99', alg='cosamp_percent')
 
-        x_h = cosamp(A, y, 20, epsilon_term, 0.00001)
-        plt_error(x_h, x_f, 'epsilon_term, k = 0.00001', alg='cosamp_epsilon')
+    x_h = cosamp(A, y, 20, epsilon_term, 0.00001)
+    plt_error(x_h, x_f, 'epsilon_term, k = 0.00001', alg='cosamp_epsilon')

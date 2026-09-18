@@ -1,21 +1,24 @@
-import numpy as np
+#!/usr/bin/python
 
+"""
+Orthogonal Matching Pursuit with Recursive Least Squares update.
+
+References:
+    D. Zachariah, S. Chatterjee and M. Jansson, "Online Network
+    Response Identification with Recursive Least Squares,"
+    Signal Processing, vol. 103, pp. 237-246, 2014.
+    (RLS support-extension viewpoint)
+
+    Hammeed, Maxin Abdulrasool, "Comparative Analysis of Orthogonal
+    Matching Pursuit and least angle regression," Michigan State
+    University, A Thesis for Masters of Science, 2012.
+    (OMP termination conventions)
+"""
+
+import numpy as np
 
 def omp_rls(A, y, term, param, lam=1.0, delta=1e-3, max_iters=None):
     """
-    Orthogonal Matching Pursuit with Recursive Least Squares update.
-
-    References:
-        D. Zachariah, S. Chatterjee and M. Jansson, "Online Network
-        Response Identification with Recursive Least Squares,"
-        Signal Processing, vol. 103, pp. 237-246, 2014.
-        (RLS support-extension viewpoint)
-
-        Hammeed, Maxin Abdulrasool, "Comparative Analysis of Orthogonal
-        Matching Pursuit and least angle regression," Michigan State
-        University, A Thesis for Masters of Science, 2012.
-        (OMP termination conventions)
-
     Parameters
     ----------
     A : ndarray (m, n), Measurement matrix.
@@ -33,6 +36,7 @@ def omp_rls(A, y, term, param, lam=1.0, delta=1e-3, max_iters=None):
         Reconstructed sparse vector.
     """
     m, n = A.shape
+    y = np.asarray(y).reshape(-1, 1)     # accept flat or column measurements
     r = y.copy()
     support = []
     x_hat = np.zeros(n)
@@ -42,9 +46,10 @@ def omp_rls(A, y, term, param, lam=1.0, delta=1e-3, max_iters=None):
     A_support = np.zeros((m, 0))
 
     while not term(param, y, r, x_hat) and len(support) < (max_iters or n):
-        # 1. Find index with maximum correlation
-        correlations = A.T @ r
-        idx = np.argmax(np.abs(correlations))
+        # 1. Find index with maximum correlation among fresh atoms
+        correlations = np.abs((A.T @ r).ravel())
+        correlations[support] = -np.inf  # residual ⊥ support; never re-pick
+        idx = int(np.argmax(correlations))
         support.append(idx)
 
         # 2. Update active submatrix
@@ -85,14 +90,13 @@ def epsilon_term(e, y, r, x_hat):
 if __name__ == "__main__":
     from common import *
 
-    for db in [None, 20]:
-        (y, A, x_t, x_f) = gen_test_signal(snr_db=db, k=10, n=200, amps_l=-10, amps_h=10)
+    (y, A, x_t, x_f) = gen_test_signal(snr_db=20, k=10, n=200, amps_l=-10, amps_h=10)
 
-        x_h = omp_rls(A, y, sparsity_term, 20)
-        plt_error(x_h, x_f, 'sparsity_term, k = 20', alg='omp_rls_sparsity')
+    x_h = omp_rls(A, y, sparsity_term, 20)
+    plt_error(x_h, x_f, 'sparsity_term, k = 20', alg='omp_rls_sparsity')
 
-        x_h = omp_rls(A, y, percent_term, 0.99)
-        plt_error(x_h, x_f, 'percent_term, p = 0.9999', alg='omp_rls_percent')
+    x_h = omp_rls(A, y, percent_term, 0.99)
+    plt_error(x_h, x_f, 'percent_term, p = 0.99', alg='omp_rls_percent')
 
-        x_h = omp_rls(A, y, epsilon_term, 0.00001)
-        plt_error(x_h, x_f, 'epsilon_term, k = 0.00001', alg='omp_rls_epsilon')
+    x_h = omp_rls(A, y, epsilon_term, 0.00001)
+    plt_error(x_h, x_f, 'epsilon_term, k = 0.00001', alg='omp_rls_epsilon')

@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 """
 Orthogonal Match Pursuit Sparse Signal Recovery
 
@@ -15,8 +17,6 @@ import numpy as np
 
 def omp(y, A, term, param):
     """
-    orthogonal match pursuit with configurable termination criteria
-
     Parameters:
         y: `compressed samples`
         A: `sampling matrix`
@@ -27,26 +27,29 @@ def omp(y, A, term, param):
         x_hat: `reconstructed signal`
     """
 
+    y = np.asarray(y).reshape(-1, 1)     # accept flat or column measurements
+    n = A.shape[1]
+    x_hat = np.zeros((n, 1))             # null output init (embedded estimate)
     r = y       # init residual
     lamda = []  # list of support loc inds
     phi = []    # list of support vectors
     x = np.array([]) # null output init
 
-    while not term(param, y, r, x):
+    while not term(param, y, r, x_hat):
         c = np.dot(A.T, r)               # correlation
-        ind = np.argmax(np.abs(c))       # find abs support of max correlation
+        cl = np.abs(c).ravel()
+        cl[lamda] = -np.inf              # residual ⊥ support: never re-pick
+        ind = int(np.argmax(cl))         # find best fresh atom
 
         lamda.append(ind)                # update support
-        phi.append(A[:, ind:(ind+1)])    # update support locs 
+        phi.append(A[:, ind:(ind+1)])    # update support locs
 
         P = np.concatenate(phi, axis=1)  # compose the submatrix
         x = np.linalg.lstsq(P, y, rcond=None)[0]  # min ||y-P*x||_2
-        r = y - np.dot(P, x)                      # update residual
+        x_hat[:] = 0
+        x_hat[lamda] = x                 # embed coefficients
+        r = y - np.dot(P, x)             # update residual
 
-    # embed coefficients in support
-    n = A.shape[1]
-    x_hat = np.zeros((n, 1))
-    x_hat[lamda] = x
 
     return x_hat
 
@@ -66,14 +69,13 @@ def epsilon_term(e, y, r, x_hat):
 if __name__ == "__main__":
     from common import *
 
-    for db in [None, 20]:
-        (y, A, x_t, x_f) = gen_test_signal(snr_db=db, k=10, n=200, amps_l=-10, amps_h=10)
+    (y, A, x_t, x_f) = gen_test_signal(snr_db=20, k=10, n=200, amps_l=-10, amps_h=10)
 
-        x_h = omp(y, A, sparsity_term, 20)
-        plt_error(x_h, x_f, 'sparsity_term, k = 20', alg='omp_sparsity')
+    x_h = omp(y, A, sparsity_term, 20)
+    plt_error(x_h, x_f, 'sparsity_term, k = 20', alg='omp_sparsity')
 
-        x_h = omp(y, A, percent_term, 0.99)
-        plt_error(x_h, x_f, 'percent_term, p = 0.99', alg='omp_percent')
+    x_h = omp(y, A, percent_term, 0.99)
+    plt_error(x_h, x_f, 'percent_term, p = 0.99', alg='omp_percent')
 
-        x_h = omp(y, A, epsilon_term, 0.00001)
-        plt_error(x_h, x_f, 'epsilon_term, k = 0.00001', alg='omp_epsilon')
+    x_h = omp(y, A, epsilon_term, 0.00001)
+    plt_error(x_h, x_f, 'epsilon_term, k = 0.00001', alg='omp_epsilon')
