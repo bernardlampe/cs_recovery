@@ -35,25 +35,21 @@ The numerical toolbox every algorithm leans on lives in `opt/`:
   mu = 0.9 recovery is unchanged on the standard problem.
 
 ### 3. `03_omp.py` - Orthogonal Matching Pursuit
-- **Concepts**: support set, backfitting least squares on support,
-  configurable termination (sparsity/percent/epsilon).
+- **Concepts**: support set, backfitting least squares on support.
 - **Update**: pick the atom most correlated with the residual, then
   re-least-square ALL selected atoms against y, so used atoms lose their
   wrongly-claimed energy.
 - **Key insight**: exact LS on the support makes residuals orthogonal to the
-  support — guaranteed recovery with enough samples. The termination
-  functions introduced here are reused by every later file.
+  support — guaranteed recovery with enough samples.
 
 ### 4. `04_omp_rls.py` — OMP with Recursive Least Squares updates
 - **Concepts**: online inverse-correlation maintenance (P matrix), gain vectors.
 - **Update**: same support selection as OMP; each accepted atom extends the
   RLS gain computation and rank-1 inverse-correlation update, but the
   coefficient refresh in this reference implementation is still a plain
-  pinv least-squares on the active submatrix (full coefficient streaming
-  is left as an exercise).
+  pinv least-squares on the active submatrix.
 - **Key insight**: the RLS machinery is set up so coefficients can be
-  amortized as atoms stream in one at a time rather than re-solved
-  globally.
+  amortized as atoms stream in one at a time rather than re-solve globally.
 
 ### 5. `05_stomp.py` - Stagewise Orthogonal Matching Pursuit
 - **Concepts**: threshold selection in batches, sigma-based cutoffs.
