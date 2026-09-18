@@ -1,8 +1,8 @@
-# From-Scratch Compressive Sensing, A review of reconstruction algorithms
+# From-Scratch Compressive Sensing, A review of reconstruction algorithms.
 
 Every algorithm is a standalone script using numpy. A sparse signal generated in the
-DCT domain runs through the whole course by default, so each technique can be
-compared against the previous ones.
+DCT domain runs through the whole course by default, so each technique can be compared against
+the previous ones.
 
 The numerical toolbox every algorithm leans on lives in `opt/`:
 
@@ -192,45 +192,146 @@ The numerical toolbox every algorithm leans on lives in `opt/`:
 
 `common/common.py::gen_test_signal(k=10, n=200)`:
 
-  * a noiseless (or SNR = 20 dB) sparse DCT signal with |Support| = 10 random
-    integer amplitudes,
+  * a signal with SNR = 20 dB using sparse DCT with |Support| = 10 random integer amplitudes,
   * a random Gaussian measurement matrix A with entries scaled by m^{-1/2},
-    m = ceil(2·k·log(n/k)) ≈ 60 rows (well above the k·log(n/k) exact-recovery
-    boundary),
+    m = ceil(2·k·log(n/k)) ≈ 60 rows (well above the k·log(n/k) exact-recovery boundary),
   * y = A·x_t.
 
 This is the object each script solves in its `__main__` demo, and exactly the
-signal `run_all.py` hands to all 18 solvers.
-
-## Charts
-
-`run_all.py` writes two PNGs into `out/`:
-
-  * `out/convergence.png` — per-iteration residual norm ||y − Ax||₂ on log
-    axes, as a 2×2 grid: top row the noiseless case, bottom row the noisy
-    (SNR = 20 dB) case; each row has a full-horizon panel (left) and a zoom
-    of the first 30 iterations (right), where the greedy family collapses.
-  * `out/error_chart.png` — grouped horizontal bars of the final relative
-    l2 error per algorithm (one clean bar, one noisy bar each), ranked by
-    the clean error, log scale.
-
-Demo PNGs written by the individual scripts additionally carry the
-generating algorithm name and a timestamp in their filename, so repeated
-runs do not clobber earlier results.
+signal `run_all.py` hands to all solvers.
 
 ## Summary lessons
 
   * Greedy (OMP family): fastest per-iteration convergence on easy problems;
-    sensitive to exact sparsity knowledge, degrade gracefully if sparsity estimates (k)
-    are close.
+    sensitive to exact sparsity knowledge, degrade gracefully if sparsity estimates (k) are close.
   * Hard thresholding (IHT family): simple loops, weaker local accuracy.
-  * Reweighted (IRLS/FOCUSS): few iterations, need regularization legroom
-    (delta) and dense initializations.
+  * Reweighted (IRLS/FOCUSS): few iterations, need regularization legroom (delta) and dense initializations.
   * Convex l1 (BP/LASSO/AADM): exact or near-exact, best noise stability;
     cost is iterations/machine time rather than implementation complexity.
   * Sketched/message-passing (HHS/AMP): the modern scaling story; O(n) per
     iteration with statistical rather than exact guarantees.
 
+---
+
+## Insights
+
+ Part I — Greedy pursuit (01–08)
+
+ The part-level idea: build the support one (or few) atoms at a time, by correlating with the residual.
+
+ ┌───┬─────────┬──────────────────────────────────────────────────────────────┬──────────────────────────────────────────────────────────┐
+ │ # │ Algo    │ Insight                                                      │ Exploited concept                                        │
+ ├───┼─────────┼──────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────┤
+ │ 1 │ MP      │ Cheapest possible step: pick the most-correlated atom, add   │ Correlation scan; error self-corrects only via repeated  │
+ │   │         │ its correlation value to that coefficient. Old coefficients  │ re-picking (cheap per step)                              │
+ │   │         │ are never revised.                                           │                                                          │
+ ├───┼─────────┼──────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────┤
+ │ 2 │ Weak MP │ Accept any atom above μ·max correlation instead of the       │ Weak/gain selection (Blumensath–Davies): μ>½ guarantees  │
+ │   │         │ argmax                                                       │ convergence while allowing cheaper/streamed selection    │
+ ├───┼─────────┼──────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────┤
+ │ 3 │ OMP     │ Re-solve least squares on the whole support each step        │ Orthogonalization: the residual becomes orthogonal to    │
+ │   │         │                                                              │ used atoms → no re-picks, one atom per true component,   │
+ │   │         │                                                              │ exact recovery                                           │
+ ├───┼─────────┼──────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────┤
+ │ 4 │ OMP-RLS │ Maintain the inverse correlation of the growing support      │ Online rank-1 updates amortize the per-step LS to O(m·s) │
+ │   │         │ incrementally (RLS: gain vector, rank-1 update) instead of   │ streams                                                  │
+ │   │         │ re-solving                                                   │                                                          │
+ ├───┼─────────┼──────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────┤
+ │ 5 │ StOMP   │ Add all atoms above σ·std(residual) in one stage             │ Batch selection + statistical cutoff: trades certainty   │
+ │   │         │                                                              │ for iteration count                                      │
+ ├───┼─────────┼──────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────┤
+ │ 6 │ GP      │ Keep greedy detection but replace exact LS with a few        │ CG warm-started across iterations ≈ LS accuracy at       │
+ │   │         │ conjugate-gradient sweeps on the support                     │ matching-pursuit cost                                    │
+ ├───┼─────────┼──────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────┤
+ │ 7 │ CoSaMP  │ Propose 2k candidates, prune to best k each round            │ Supporting/pruning: wrong early picks get evicted →      │
+ │   │         │                                                              │ provable noise robustness OMP lacks                      │
+ ├───┼─────────┼──────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────┤
+ │ 8 │ SP      │ Same, but candidate set is exactly k and the final support   │ Subspace refinement: two LS per iteration, cheaper than  │
+ │   │         │ gets a second LS                                             │ CoSaMP's 2k merge                                        │
+ └───┴─────────┴──────────────────────────────────────────────────────────────┴──────────────────────────────────────────────────────────┘
+
+ Growth within the part: selection rigor is progressively relaxed (argmax → threshold → batch), while coefficient fidelity is
+ progressively hardened (drifting → LS → pruned LS → incremental LS).
+
+ Part II — Iterative thresholding & reweighting (09–11)
+
+ The part-level idea: no support sets at all — run gradient-like loops on the full vector, sparsity enforced by an operator on each
+ iterate.
+
+ ┌────┬────────┬─────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────┐
+ │ #  │ Algo   │ Insight                                         │ Exploited concept                                                     │
+ ├────┼────────┼─────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+ │ 9  │ IHT    │ Gradient descent + keep the k largest entries   │ Hard-thresholding operator H_k = Euclidean projection onto the        │
+ │    │        │ every step                                      │ k-sparse set; step τ = 3/‖A‖² keeps it contractive                    │
+ ├────┼────────┼─────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+ │ 10 │ IRLS   │ Solve weighted ridge LS where small             │ Smoothed ℓ₀/log-sum surrogate: reweighting approximates ℓ₀ from       │
+ │    │        │ coefficients get big weights                    │ above; δ→0 sharpens                                                   │
+ ├────┼────────┼─────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+ │ 11 │ FOCUSS │ Same sharpening, multiplicative form: scale     │ Minimum-norm/pseudoinverse restriction; ancestor of IRLS, converges   │
+ │    │        │ each coordinate by its own magnitude            │ in few iterations with a good init                                    │
+ └────┴────────┴─────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────┘
+
+ Contrast with Part I: detection is implicit (the operator, not a greedy choice); per-iteration cost is large (dense n-vector work) but
+ each iteration is a smooth global improvement — no discrete decisions to regret.
+
+ Part III — Convex ℓ₁ solvers (12–14)
+
+ The part-level idea: replace NP-hard ℓ₀ with the convex ℓ₁ program, then solve it well.
+
+ ┌────┬───────┬──────────────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────┐
+ │ #  │ Algo  │ Insight                                                  │ Exploited concept                                             │
+ ├────┼───────┼──────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────┤
+ │ 12 │ LARS  │ Grow support by pivots where an atom's correlation ties  │ Correlation knots: traces the entire LASSO solution path      │
+ │    │       │ the active set; step along the equiangular direction     │ exactly, in ~k pivots                                         │
+ │    │       │ until the next tie                                       │                                                               │
+ ├────┼───────┼──────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────┤
+ │ 13 │ BP    │ ℓ₁ minimization is a linear program                      │ Exact reformulation x = u − v, standard-form simplex          │
+ │    │       │                                                          │ (two-phase, Bland's rule) — the ground truth every fast       │
+ │    │       │                                                          │ solver approximates (1e-12 here)                              │
+ ├────┼───────┼──────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────┤
+ │ 14 │ LASSO │ ℓ₁ in the penalized least-squares form, solvable by      │ FISTA: soft-threshold prox + Nesterov momentum + step 1/‖A‖²; │
+ │    │       │ proximal splitting                                       │ lam explicitly trades bias vs sparsity                        │
+ └────┴───────┴──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────┘
+
+ Contrast with Parts I/II: exact global optimum instead of a heuristic trajectory; the price is iterations and tuning (lam), not
+ cleverness.
+
+ Part IV — Operator splitting & message passing (15–18)
+
+ The part-level idea: modern tools — split the problem across operators/variables, or treat inference statistically.
+
+ ┌────┬─────────┬─────────────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────┐
+ │ #  │ Algo    │ Insight                                 │ Exploited concept                                                            │
+ ├────┼─────────┼─────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+ │ 15 │ AADM    │ Same ℓ₁/LASSO objective, but split by   │ ADMM: alternating x-LS / z-soft-threshold / dual ascent, with adaptive ρ     │
+ │    │         │ constraint (minimize ‖Ax−y‖² + ‖z‖₁     │ balancing primal vs dual residuals — no hand-tuned penalty                   │
+ │    │         │ s.t. x = z)                             │                                                                              │
+ ├────┼─────────┼─────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+ │ 16 │ Bregman │ Reaching the BP fixed point doesn't     │ Bregman iteration: inner least-squares solves + add the .closed residual     │
+ │    │         │ need an ℓ₁ program                      │ back to the data (residual reload); the penalty loop enforces exact support  │
+ │    │         │                                         │ from the LS side.                                                            │
+ ├────┼─────────┼─────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+ │ 17 │ HHS     │ Finding the big coefficients doesn't    │ Streaming sketches: count-sketch hash-bucketing + multi-round voting finds   │
+ │    │         │ need scanning all of Aᵀr                │ heavy hitters in O(n) per round, then exact LS pricing on the promoted       │
+ │    │         │                                         │ support                                                                      │
+ ├────┼─────────┼─────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+ │ 18 │ AMP     │ Replace combinatorial inference with    │ Belief propagation on dense A, decoupled asymptotically: denoiser + Onsager  │
+ │    │         │ scalar message passing                  │ reaction term make errors Gaussian (state evolution); threshold τ adapts     │
+ │    │         │                                         │ without knowing the noise level                                              │
+ └────┴─────────┴─────────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────┘
+
+ How the parts differ, in one line each
+
+ - Greedy (I): discrete, sequential support growing — cheap steps, locally optimistic, no global optimality promise.
+ - Thresholding/reweighting (II): dense continuous iterations — simple formulas, no decisions to undo, weaker local accuracy.
+ - Convex ℓ₁ (III): solves one well-posed optimization problem exactly (or its full path) — strongest guarantees, highest
+   iteration/machine cost.
+ - Splitting/message passing (IV): decompose the same ℓ₁ problem across variables/operators or infer statistically — the scalable endgame:
+   ADMM's modular but slow, Bregman's cheap-and-effective residual trick, HHS's O(n) sketching, AMP's asymptotically exact O(mn) loop.
+
+ The thread across all four: every part attacks the same problem (exact-sparse recovery from m ≈ k·log(n/k) measurements) by weakening a
+ different form of difficulty — Part I removes the combinatorial search, Part II the non-smoothness, Part III the non-convexity, Part IV
+ the per-iteration cost.
 ---
 
 ## References
@@ -327,12 +428,10 @@ Per-algorithm citations, as cited in each algorithm's script:
 - S. Boyd, N. Parikh, E. Chu, B. Peleato and J. Eckstein, "Distributed
   Optimization and Statistical Learning via the Alternating Direction
   Method of Multipliers," Foundations and Trends in Machine Learning,
-  vol. 3, no. 1, pp. 1-122, 2011. (section 3.4.1: varying the penalty
-  parameter)
+  vol. 3, no. 1, pp. 1-122, 2011. (section 3.4.1: varying the penalty parameter)
 - M. Figueiredo and J. Bioucas-Dias, "Restoration of Poissonian Images
   Using Alternating Direction Optimization," IEEE Transactions on Image
-  Processing, vol. 20, no. 10, pp. 2752-2766, 2011. (ADMM for sparse
-  reconstruction)
+  Processing, vol. 20, no. 10, pp. 2752-2766, 2011. (ADMM for sparse reconstruction)
 
 **`16_bregman.py`**
 - S. Osher, M. Burger, D. Goldfarb, J. Xu and W. Yin, "An Iterative
@@ -349,11 +448,9 @@ Per-algorithm citations, as cited in each algorithm's script:
 - P. Berinde, A. C. Gilbert, P. Indyk, H. Karloff and M. J. Strauss,
   "Combining Geometry and Combinatorics: A Unified Approach to Sparse
   Signal Recovery," 46th Annual Allerton Conference on Communication,
-  Control, and Computing, 2008. (heavy-hitter recovery in compressed
-  sensing)
+  Control, and Computing, 2008. (heavy-hitter recovery in compressed sensing)
 - K. L. Clarkson and D. P. Woodruff, "Low Rank Approximation and Regression
-  in Input Sparsity Time," STOC 2013, pp. 81-90, 2013. (sketch-based linear
-  algebra)
+  in Input Sparsity Time," STOC 2013, pp. 81-90, 2013. (sketch-based linear algebra)
 
 **`18_amp.py`**
 - D. L. Donoho, A. Maleki and A. Montanari, "Message Passing Algorithms for
@@ -361,8 +458,7 @@ Per-algorithm citations, as cited in each algorithm's script:
   vol. 106, no. 45, pp. 18914-18919, 2009.
 - M. Bayati and A. Montanari, "The Dynamics of Message Passing on Dense
   Graphs, with Applications to Compressed Sensing," IEEE Transactions on
-  Information Theory, vol. 57, no. 2, pp. 764-785, Feb. 2011. (state
-  evolution analysis)
+  Information Theory, vol. 57, no. 2, pp. 764-785, Feb. 2011. (state evolution analysis)
 
 **Toolbox (`opt/`)**
 - N. Parikh and S. Boyd, "Proximal Algorithms," Foundations and Trends in
@@ -373,13 +469,11 @@ Per-algorithm citations, as cited in each algorithm's script:
 - J. R. Shewchuk, "An Introduction to the Conjugate Gradient Method Without
   the Painful Derivation," Carnegie Mellon University, 1994. (`opt/lsqr.py`)
 - J. Nocedal and S. J. Wright, "Numerical Optimization," 2nd ed., Springer,
-  2006. (line search and conjugate gradient; `opt/gradient.py`,
-  `opt/lsqr.py`)
+  2006. (line search and conjugate gradient; `opt/gradient.py`, `opt/lsqr.py`)
 - S. Boyd, N. Parikh, E. Chu, B. Peleato and J. Eckstein, "Distributed
   Optimization and Statistical Learning via the Alternating Direction
   Method of Multipliers," Foundations and Trends in Machine Learning,
   vol. 3, no. 1, pp. 1-122, 2011. (`opt/admm.py`)
 - T. S. Ferguson, "Linear Programming: A Concise Introduction," UCLA course
   notes, 2006. (`opt/dantzig.py`)
-- S. J. Wright, "Primal-Dual Interior-Point Methods," SIAM, 1997.
-  (`opt/dantzig.py`)
+- S. J. Wright, "Primal-Dual Interior-Point Methods," SIAM, 1997.  (`opt/dantzig.py`)
