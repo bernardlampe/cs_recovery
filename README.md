@@ -22,9 +22,8 @@ The numerical toolbox every algorithm leans on lives in `opt/`:
   adds its correlation to that atom's coefficient; coefficients of earlier
   atoms are never revised.
 - **Key insight**: MP is the cheapest pursuit; it pays for cheapness by letting
-  the residual re-correlate with used atoms, so convergence is slow (86 iters
-  vs OMP's 10 on the standard problem). The original signal model needs
-  m ≈ c·k·log(n/k) samples.
+  the residual re-correlate with used atoms, so convergence is slow. The original
+  signal model needs m ≈ c·k·log(n/k) samples.
 
 ### 2. `02_weak_mp.py` - Weak Matching Pursuit
 - **Concepts**: weak acceptance threshold (0 < mu < 1), gain action.
