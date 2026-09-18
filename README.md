@@ -136,8 +136,7 @@ The numerical toolbox every algorithm leans on lives in `opt/`:
   at 1/Lipschitz ||A||².
 - **Key insight**: the workhorse formulation - LASSO trades off bias vs
   sparsity through lam: too big over-shrinks (0.03 → 10⁻¹ rel err), too small
-  → dense solution (1e-6 → 197 nonzeros); the lam good for exact
-  recovery on this signal is ~1e-5 with a long 21k-iteration tail.
+  → dense solution (1e-6 → lots of nonzeros).
 
 ---
 
