@@ -1,4 +1,4 @@
-# From-Scratch Compressive Sensing, A review of reconstruction algorithms.
+# Compressive Sensing, A review of reconstruction algorithms.
 
 Every algorithm is a standalone script using numpy. A sparse signal generated in the
 DCT domain runs through the whole course by default, so each technique can be compared against
