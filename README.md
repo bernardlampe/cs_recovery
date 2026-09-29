@@ -37,7 +37,7 @@ The numerical toolbox every algorithm leans on lives in `opt/`:
 ### 3. `03_omp.py` - Orthogonal Matching Pursuit
 - **Concepts**: support set, backfitting least squares on support.
 - **Update**: pick the atom most correlated with the residual, then
-  re-least-square ALL selected atoms against y, so used atoms lose their
+  re-least-square all selected atoms against y, so used atoms lose their
   wrongly-claimed energy.
 - **Key insight**: exact LS on the support makes residuals orthogonal to the
   support — guaranteed recovery with enough samples.
