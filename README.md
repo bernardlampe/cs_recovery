@@ -59,11 +59,11 @@ The numerical toolbox every algorithm leans on lives in `opt/`:
   guarantees are weaker but per-iteration cost drops.
 
 ### 6. `06_gradient_pursuit.py` - Gradient Pursuit
-- **Concepts**: conjugate-gradient on the support, Polak-Ribiere, seeded warm starts.
+- **Concepts**: conjugate-gradient on the support
 - **Update**: after greedy support detection, run cg_iters CG sweeps per
   iteration instead of an exact LS.
 - **Key insight**: gradient pursuit converges to the same limit as OMP when
-  the subproblem is solved accurately (10-12 CG sweeps), but each sweep is
+  the subproblem is solved accurately, but each sweep is
   cheaper than a full LS: good for large supports.
 
 ### 7. `07_cosamp.py` - Compressive Sampling Matching Pursuit
